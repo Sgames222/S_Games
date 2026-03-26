@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GameMax Hub | أخبار وأكثر من 50,000 لعبة</title>
+    <style>
+        :root { --neon: #00ff88; --dark: #0b0e14; --card: #161b22; --text: #e6edf3; }
+        body { background: var(--dark); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; line-height: 1.6; }
+        
+        /* شريط التنقل */
+        nav { background: rgba(0,0,0,0.9); padding: 15px; text-align: center; border-bottom: 2px solid var(--neon); position: sticky; top: 0; z-index: 1000; backdrop-filter: blur(10px); }
+        nav button { background: none; border: 1px solid var(--neon); color: var(--neon); padding: 10px 25px; cursor: pointer; border-radius: 5px; margin: 0 8px; font-weight: bold; transition: 0.3s; }
+        nav button.active-btn { background: var(--neon); color: black; }
+
+        header { padding: 60px 20px; text-align: center; background: radial-gradient(circle at top, #0d2b1d, var(--dark)); }
+        .search-box { width: 85%; max-width: 700px; padding: 18px; border-radius: 50px; border: 2px solid var(--neon); background: #000; color: white; font-size: 1.2rem; outline: none; box-shadow: 0 0 20px rgba(0,255,136,0.1); }
+
+        .container { max-width: 1300px; margin: 0 auto; padding: 20px; }
+        .section { display: none; }
+        .show { display: block; }
+
+        /* تنسيق كروت الألعاب والأخبار */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 25px; }
+        .card { background: var(--card); border-radius: 15px; overflow: hidden; border: 1px solid #30363d; transition: 0.3s ease; position: relative; }
+        .card:hover { transform: translateY(-10px); border-color: var(--neon); }
+        .card img { width: 100%; height: 350px; object-fit: cover; }
+        .card-body { padding: 20px; }
+        .card-title { font-size: 1.25rem; font-weight: bold; color: var(--neon); margin-bottom: 10px; }
+        
+        /* أزرار المشاركة */
+        .share-btn { display: inline-block; margin-top: 15px; padding: 8px 15px; background: #1877F2; color: white; text-decoration: none; border-radius: 5px; font-size: 0.85rem; font-weight: bold; }
+        .share-wa { background: #25D366; margin-right: 5px; }
+
+        #loading { text-align: center; padding: 50px; font-size: 1.5rem; color: var(--neon); }
+    </style>
+</head>
+<body>
+
+<nav>
+    <button id="btn-games" class="active-btn" onclick="openTab('games')">🎮 قاعدة الألعاب</button>
+    <button id="btn-news" onclick="openTab('news')">📰 أخبار المطورين</button>
+</nav>
+
+<div id="games" class="section show">
+    <header>
+        <h1>موسوعة الألعاب العالمية</h1>
+        <p>ابحث في أكثر من 50,000 عنوان وتعرف على المتطلبات</p>
+        <input type="text" id="gameSearch" class="search-box" placeholder="اكتب اسم اللعبة بالإنجليزية (مثل: Spider-Man)..." onkeyup="if(event.key==='Enter') searchGames()">
+    </header>
+    <div class="container">
+        <div id="gameGrid" class="grid"></div>
+    </div>
+</div>
+
+<div id="news" class="section">
+    <header>
+        <h1>أخبار المطورين والألعاب الجديدة</h1>
+        <p>تحديثات مباشرة من كبرى شركات الألعاب عالمياً</p>
+    </header>
+    <div class="container">
+        <div id="newsGrid" class="grid"></div>
+    </div>
+</div>
+
+<div id="loading" style="display:none;">جاري تحديث البيانات...</div>
+
+<script>
+    const API_KEY = '543a6d71391741549495b46e3364f981';
+
+    function openTab(tabName) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('show'));
+        document.querySelectorAll('nav button').forEach(b => b.classList.remove('active-btn'));
+        document.getElementById(tabName).classList.add('show');
+        document.getElementById('btn-' + tabName).classList.add('active-btn');
+        if(tabName === 'news') fetchNews();
+    }
+
+    async function searchGames() {
+        const query = document.getElementById('gameSearch').value;
+        if(!query) return;
+        toggleLoad(true);
+        try {
+            const res = await fetch(`https://api.rawg.io/api/games?key=${API_KEY}&search=${query}&page_size=20`);
+            const data = await res.json();
+            renderCards('gameGrid', data.results, true);
+        } catch(e) { alert("تأكد من اتصالك بالإنترنت"); }
+        toggleLoad(false);
+    }
+
+    async function fetchNews() {
+        toggleLoad(true);
+        try {
+            // جلب أحدث الألعاب التي تم الإعلان عنها أو تحديثها في 2026
+            const res = await fetch(`https://api.rawg.io/api/games?key=${API_KEY}&dates=2026-01-01,2026-12-31&ordering=-added&page_size=15`);
+            const data = await res.json();
+            renderCards('newsGrid', data.results, false);
+        } catch(e) { console.error(e); }
+        toggleLoad(false);
+    }
+
+    function renderCards(elementId, items, isGame) {
+        const grid = document.getElementById(elementId);
+        grid.innerHTML = items.map(item => {
+            const shareUrl = encodeURIComponent(window.location.href);
+            const shareText = encodeURIComponent(`شاهد هذه اللعبة: ${item.name} على موقع GameMax!`);
+            
+            return `
+                <div class="card">
+                    <img src="${item.background_image || 'https://via.placeholder.com/300x400'}" loading="lazy">
+                    <div class="card-body">
+                        <div class="card-title">${item.name}</div>
+                        <p>⭐ التقييم: ${item.rating || 'N/A'}</p>
+                        <p>📅 ${isGame ? 'تاريخ الإصدار' : 'آخر تحديث'}: ${item.released || '2026'}</p>
+                        
+                        <a href="https://www.facebook.com/sharer/sharer.php?u=${shareUrl}" target="_blank" class="share-btn">فيسبوك</a>
+                        <a href="https://api.whatsapp.com/send?text=${shareText}" target="_blank" class="share-btn share-wa">واتساب</a>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function toggleLoad(show) { document.getElementById('loading').style.display = show ? 'block' : 'none'; }
+
+    // تشغيل تلقائي عند الفتح
+    window.onload = () => { searchGames(); };
+</script>
+
+</body>
+</html>
